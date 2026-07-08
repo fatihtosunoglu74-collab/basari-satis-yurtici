@@ -1,0 +1,12 @@
+/* Tüm eski stil kalıntıları temizlendi */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #F7FAFF;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
