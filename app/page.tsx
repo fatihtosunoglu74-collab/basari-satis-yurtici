@@ -388,7 +388,7 @@ export default function App(){
             </div>
             <a href="/opengraph-image.jpg" download="yurtici-sevkiyat.jpg"
               style={{display:"flex",alignItems:"center",justifyContent:"center",gap:7,background:"#fff",color:C.navy,border:`1.5px solid ${C.border}`,borderRadius:12,padding:mobile?"0 14px":"0 18px",height:mobile?48:62,fontWeight:800,fontSize:mobile?12:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",textDecoration:"none"}}>
-              <span style={{fontSize:16}}>🖼️</span>{mobile?"":"Görseli İndir"}
+              <span style={{fontSize:16}}>🖼️</span>Görseli İndir
             </a>
             <button onClick={handleSave} disabled={saving}
               style={{display:"flex",alignItems:"center",justifyContent:"center",gap:9,background:C.green,color:"#fff",border:"none",borderRadius:12,padding:"0 24px",height:mobile?48:62,fontWeight:900,fontSize:mobile?14:15,cursor:"pointer",boxShadow:"0 10px 24px rgba(34,197,94,0.30)",fontFamily:"inherit",whiteSpace:"nowrap"}}>
