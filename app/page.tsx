@@ -24,18 +24,20 @@ function normDepo(v:string):string{
   if(s.includes("ÇATALCA")||s.includes("CATALCA"))return"ÇATALCA";
   return sv(v).toUpperCase()||"TEM.34";
 }
-// Zeus Durum sözlüğü: Başlamadı / İşlemde / Bitti / (Silindi)
+// Zeus Durum sözlüğü: Başlamadı / İşlemde / Bitti / Silindi
 function zeusType(durum:string):string{
   const d=durum.toUpperCase();
+  if(d.includes("SİLİNDİ")||d.includes("SILINDI"))return"gray"; // iptal — Gitmeyen'e sayılmaz
   if(d.includes("BİTTİ")||d.includes("BITTI")||d.includes("TAMAMLAN"))return"green";
   if(d.includes("İŞLEMDE")||d.includes("ISLEMDE")||d.includes("DEVAM"))return"yellow";
-  return"red";
+  return"red"; // Başlamadı, tanımsız
 }
-// Satış ekibinin diliyle: Gitmeyen / Toplaması Devam Eden / Giden
+// Satış ekibinin diliyle: Gitmeyen / Toplaması Devam Eden / Giden / İptal
 function displayDurum(durum:string):string{
   const t=zeusType(durum);
   if(t==="green")return"GİDEN";
   if(t==="yellow")return"TOPLAMASI DEVAM EDEN";
+  if(t==="gray")return"İPTAL EDİLDİ";
   return"GİTMEYEN";
 }
 
@@ -49,9 +51,9 @@ const C={navy:"#0B2F78",navyDk:"#061F55",navyH:"#062B66",green:"#22C55E",red:"#E
 
 // ─── Küçük bileşenler ─────────────────────────────────────────────────────────
 function Badge({type,label}:{type:string;label:string}){
-  const bg=type==="green"?C.softGreen:type==="yellow"?C.softYellow:C.softRed;
-  const cl=type==="green"?"#15803D":type==="yellow"?"#B45309":"#B91C1C";
-  const br=type==="green"?"#BBF7D0":type==="yellow"?"#FDE68A":"#FECACA";
+  const bg=type==="green"?C.softGreen:type==="yellow"?C.softYellow:type==="gray"?"#F1F5F9":C.softRed;
+  const cl=type==="green"?"#15803D":type==="yellow"?"#B45309":type==="gray"?"#64748B":"#B91C1C";
+  const br=type==="green"?"#BBF7D0":type==="yellow"?"#FDE68A":type==="gray"?"#CBD5E1":"#FECACA";
   return <span style={{display:"inline-flex",alignItems:"center",padding:"4px 11px",borderRadius:6,fontSize:11,fontWeight:900,letterSpacing:0.3,background:bg,color:cl,border:`1px solid ${br}`,whiteSpace:"nowrap"}}>{label}</span>;
 }
 function SummaryCard({type,title,val,sub,onClick,active}:{type:string;title:string;val:number;sub:string;onClick?:()=>void;active?:boolean}){
