@@ -57,8 +57,8 @@ function Badge({type,label}:{type:string;label:string}){
   return <span style={{display:"inline-flex",alignItems:"center",padding:"4px 11px",borderRadius:6,fontSize:11,fontWeight:900,letterSpacing:0.3,background:bg,color:cl,border:`1px solid ${br}`,whiteSpace:"nowrap"}}>{label}</span>;
 }
 function SummaryCard({type,title,val,sub,onClick,active}:{type:string;title:string;val:number;sub:string;onClick?:()=>void;active?:boolean}){
-  const cl=type==="red"?C.red:type==="yellow"?C.yellow:C.green;
-  const ic=type==="red"?"📋":type==="yellow"?"🕐":"✓";
+  const cl=type==="red"?C.red:type==="yellow"?C.yellow:type==="gray"?"#64748B":C.green;
+  const ic=type==="red"?"📋":type==="yellow"?"🕐":type==="gray"?"🚫":"✓";
   return(
     <div onClick={onClick} style={{flex:1,background:active?`${cl}0F`:C.card,border:`${active?2:1}px solid ${active?cl:C.border}`,borderRadius:16,padding:"20px 24px",display:"flex",alignItems:"center",gap:18,
       boxShadow:active?`0 8px 24px ${cl}33`:"0 6px 20px rgba(11,47,120,0.05)",cursor:onClick?"pointer":"default",transition:"all .15s",position:"relative"}}>
@@ -245,7 +245,7 @@ export default function App(){
 
   // ─── Filtreleme ────────────────────────────────────────────────────────────
   const depolar=Array.from(new Set(rows.map(r=>r.depo))).filter(Boolean);
-  const grand={b:rows.filter(r=>r.type==="red").length,y:rows.filter(r=>r.type==="yellow").length,g:rows.filter(r=>r.type==="green").length};
+  const grand={b:rows.filter(r=>r.type==="red").length,y:rows.filter(r=>r.type==="yellow").length,g:rows.filter(r=>r.type==="green").length,gray:rows.filter(r=>r.type==="gray").length};
 
   const th:React.CSSProperties={padding:"12px 16px",textAlign:"left",fontSize:12,fontWeight:800,color:C.muted,borderBottom:`1px solid ${C.border}`,letterSpacing:0.2,whiteSpace:"nowrap"};
   const td:React.CSSProperties={padding:"13px 16px",fontSize:13,fontWeight:700,borderBottom:`1px solid ${C.border}`,color:C.text};
@@ -256,7 +256,7 @@ export default function App(){
         <div style={{display:"flex",alignItems:"center",gap:9,fontWeight:900,fontSize:15,color:C.text,letterSpacing:0.4}}>
           <span style={{fontSize:17}}>📋</span>SİPARİŞ LİSTESİ
         </div>
-        <span style={{fontSize:12,fontWeight:700,color:C.muted}}>{count} kayıt{depotLabel?` · ${depotLabel}`:""}{durumFiltre?` · ${displayDurum(durumFiltre==="red"?"Başlamadı":durumFiltre==="yellow"?"İşlemde":"Bitti")} filtresi aktif`:""}</span>
+        <span style={{fontSize:12,fontWeight:700,color:C.muted}}>{count} kayıt{depotLabel?` · ${depotLabel}`:""}{durumFiltre?` · ${durumFiltre==="red"?"GİTMEYEN":durumFiltre==="yellow"?"TOPLAMASI DEVAM EDEN":durumFiltre==="gray"?"SİLİNENLER":"GİDEN"} filtresi aktif`:""}</span>
       </div>
       {mobile&&mobileList?(
         <div>{mobileList}</div>
@@ -286,6 +286,7 @@ export default function App(){
               <SummaryCard type="red"    title="GİTMEYEN" val={grand.b} sub="Sipariş" active={durumFiltre==="red"}    onClick={()=>setDurumFiltre(f=>f==="red"?"":"red")}/>
               <SummaryCard type="yellow" title="TOPLAMASI DEVAM EDEN" val={grand.y} sub="Sipariş" active={durumFiltre==="yellow"} onClick={()=>setDurumFiltre(f=>f==="yellow"?"":"yellow")}/>
               <SummaryCard type="green"  title="GİDEN" val={grand.g} sub="Sipariş" active={durumFiltre==="green"}  onClick={()=>setDurumFiltre(f=>f==="green"?"":"green")}/>
+              <SummaryCard type="gray"   title="SİLİNENLER" val={grand.gray} sub="Sipariş" active={durumFiltre==="gray"} onClick={()=>setDurumFiltre(f=>f==="gray"?"":"gray")}/>
             </div>
           </div>
         )}
@@ -295,6 +296,7 @@ export default function App(){
           const b=rowsForDepot.filter(r=>r.type==="red").length;
           const y=rowsForDepot.filter(r=>r.type==="yellow").length;
           const g=rowsForDepot.filter(r=>r.type==="green").length;
+          const gray=rowsForDepot.filter(r=>r.type==="gray").length;
           return(
             <div key={depot??"tek"} style={{marginBottom:22}}>
               {depot&&(
@@ -307,6 +309,7 @@ export default function App(){
                 <SummaryCard type="red"    title="GİTMEYEN" val={b} sub="Sipariş" active={durumFiltre==="red"}    onClick={()=>setDurumFiltre(f=>f==="red"?"":"red")}/>
                 <SummaryCard type="yellow" title="TOPLAMASI DEVAM EDEN" val={y} sub="Sipariş" active={durumFiltre==="yellow"} onClick={()=>setDurumFiltre(f=>f==="yellow"?"":"yellow")}/>
                 <SummaryCard type="green"  title="GİDEN" val={g} sub="Sipariş" active={durumFiltre==="green"}  onClick={()=>setDurumFiltre(f=>f==="green"?"":"green")}/>
+                <SummaryCard type="gray"   title="SİLİNENLER" val={gray} sub="Sipariş" active={durumFiltre==="gray"} onClick={()=>setDurumFiltre(f=>f==="gray"?"":"gray")}/>
               </div>
               {tableCard(rowsForTable.length,
                 ["Belge No","Müşteri","Gönderi Tipi","Depo","Tarih","Durum"],
@@ -440,7 +443,7 @@ export default function App(){
             <div>{renderSections()}</div>
             <div>
               <DayEndSummary title="GÜN SONU ÖZETİ · Tüm Depolar" rows={[
-                ["Toplam Sipariş",rows.length,"#fff"],["Gitmeyen",grand.b,"#FCA5A5"],["Toplaması Devam Eden",grand.y,"#FCD34D"],["Giden",grand.g,"#86EFAC"]]}/>
+                ["Toplam Sipariş",rows.length,"#fff"],["Gitmeyen",grand.b,"#FCA5A5"],["Toplaması Devam Eden",grand.y,"#FCD34D"],["Giden",grand.g,"#86EFAC"],["Silinenler",grand.gray,"#CBD5E1"]]}/>
               <ContactCard/>
             </div>
           </div>
