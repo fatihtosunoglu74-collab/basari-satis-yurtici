@@ -293,6 +293,8 @@ export default function App(){
         {depotsToShow.map(depot=>{
           const rowsForDepot=depot?rows.filter(r=>r.depo===depot):rows;
           const rowsForTable=durumFiltre?rowsForDepot.filter(r=>r.type===durumFiltre):rowsForDepot;
+          // Zübeyir Bey talebi: liste kronolojik artan geliyordu, en yeni sipariş üstte görünsün diye ters çevriliyor
+          const displayRows=[...rowsForTable].reverse();
           const b=rowsForDepot.filter(r=>r.type==="red").length;
           const y=rowsForDepot.filter(r=>r.type==="yellow").length;
           const g=rowsForDepot.filter(r=>r.type==="green").length;
@@ -313,9 +315,9 @@ export default function App(){
               </div>
               {tableCard(rowsForTable.length,
                 ["Belge No","Müşteri","Gönderi Tipi","Depo","Tarih","Durum"],
-                rowsForTable.length===0
+                displayRows.length===0
                   ?<tr><td colSpan={6} style={{...td,textAlign:"center",color:C.muted,padding:24}}>Excel yüklendikten sonra siparişler burada listelenir</td></tr>
-                  :rowsForTable.map((r,i)=>(
+                  :displayRows.map((r,i)=>(
                     <tr key={i}>
                       <td style={{...td,fontWeight:900}}>{r.no}</td>
                       <td style={td}>{r.musteri}</td>
@@ -326,9 +328,9 @@ export default function App(){
                     </tr>
                   )),
                 depot??undefined,
-                rowsForTable.length===0
+                displayRows.length===0
                   ?<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13}}>Excel yüklendikten sonra siparişler burada listelenir</div>
-                  :rowsForTable.map((r,i)=>(
+                  :displayRows.map((r,i)=>(
                     <MobileCard key={i} title={<>{r.musteri}<div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:2}}>{r.no}</div></>}
                       badge={<Badge type={r.type} label={displayDurum(r.durum)}/>}
                       meta={[{label:"Tip",value:r.tip},{label:"Depo",value:<Badge type={r.depo==="KARTEPE"?"yellow":"green"} label={r.depo}/>},{label:"Tarih",value:r.tarih}]}/>
