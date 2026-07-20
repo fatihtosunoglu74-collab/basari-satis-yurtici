@@ -30,6 +30,29 @@ async function sbSave(p:object):Promise<string|null>{try{const r=await fetch(`${
 async function sbUpdate(id:string,p:object){try{await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}`,{method:"PATCH",headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`},body:JSON.stringify(p)});}catch{}}
 async function sbLoad(id:string){try{const r=await fetch(`${SB_URL}/rest/v1/${TABLE}?id=eq.${id}&select=*`,{headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`}});const d=await r.json();return d[0]??null;}catch{return null;}}
 
+// ─── Silinen Sipariş Bildirim Takibi ────────────────────────────────────────
+// Amaç: birden fazla kullanıcı aynı siparişi plasiyere birden fazla kez bildirmesin
+const BILDIRIM_TABLE="silinen_bildirimleri";
+async function sbBildirilenleriGetir():Promise<Set<string>>{
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/${BILDIRIM_TABLE}?select=belge_no`,{headers:{apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`}});
+    if(!r.ok)return new Set();
+    const d=await r.json();
+    return new Set(d.map((x:{belge_no:string})=>x.belge_no));
+  }catch{return new Set();}
+}
+// true = bu kullanıcı ilk bildiren, false = başka biri zaten bildirmiş (veya hata)
+async function sbBildirKaydet(belgeNo:string):Promise<boolean>{
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/${BILDIRIM_TABLE}`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json",apikey:SB_KEY,Authorization:`Bearer ${SB_KEY}`,Prefer:"return=minimal"},
+      body:JSON.stringify({belge_no:belgeNo}),
+    });
+    return r.status===201;
+  }catch{return false;}
+}
+
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 const sv=(v:any)=>String(v??"").trim();
 const todayStr=()=>new Date().toISOString().split("T")[0];
@@ -163,6 +186,28 @@ export default function App(){
   const [copied,setCopied]=useState(false);
   const [isView,setIsView]=useState(false);
   const [lastRefresh,setLastRefresh]=useState<Date|null>(null);
+  const [bildirilmisSet,setBildirilmisSet]=useState<Set<string>>(new Set());
+  const [bildirimYukleniyor,setBildirimYukleniyor]=useState(false);
+  const [gonderimHatasi,setGonderimHatasi]=useState<string|null>(null);
+
+  async function bildirimleriYenile(){
+    setBildirimYukleniyor(true);
+    const s=await sbBildirilenleriGetir();
+    setBildirilmisSet(s);
+    setBildirimYukleniyor(false);
+  }
+
+  async function bildirButonaBasildi(r:Row,url:string){
+    setGonderimHatasi(null);
+    if(bildirilmisSet.has(r.no))return; // zaten gönderilmiş, ikinci tıklamayı yok say
+    const ilkBenMi=await sbBildirKaydet(r.no);
+    setBildirilmisSet(prev=>new Set(prev).add(r.no)); // her durumda kilitle — kayıt zaten var demektir
+    if(ilkBenMi){
+      window.open(url,"_blank");
+    } else {
+      setGonderimHatasi(`${r.no} için bildirim az önce başka bir kullanıcı tarafından gönderilmiş.`);
+    }
+  }
 
   const today=new Date().toLocaleDateString("tr-TR",{day:"2-digit",month:"long",year:"numeric",weekday:"long"});
 
@@ -171,6 +216,8 @@ export default function App(){
     chk();window.addEventListener("resize",chk);
     return()=>window.removeEventListener("resize",chk);
   },[]);
+
+  useEffect(()=>{ bildirimleriYenile(); },[]);
 
   useEffect(()=>{
     const id=new URLSearchParams(window.location.search).get("rapor");
@@ -335,12 +382,26 @@ export default function App(){
                 <SummaryCard type="green"  title="GİDEN" val={g} sub="Sipariş" active={durumFiltre==="green"}  onClick={()=>setDurumFiltre(f=>f==="green"?"":"green")}/>
                 <SummaryCard type="gray"   title="SİLİNENLER" val={gray} sub="Sipariş" active={durumFiltre==="gray"} onClick={()=>setDurumFiltre(f=>f==="gray"?"":"gray")}/>
               </div>
+              {/* Bildirim yenile + hata mesajı */}
+              <div style={{display:"flex",alignItems:"center",gap:10,margin:"0 0 10px",flexWrap:"wrap"}}>
+                <button onClick={bildirimleriYenile} disabled={bildirimYukleniyor}
+                  style={{border:"1px solid #86EFAC",borderRadius:8,background:"#fff",color:"#15803D",padding:"5px 13px",fontSize:12,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"inline-flex",alignItems:"center",gap:6}}>
+                  {bildirimYukleniyor?"⏳":"↻"} Bildirim Durumunu Yenile
+                </button>
+                <span style={{fontSize:11.5,color:C.muted}}>Birden fazla kişi bu ekranı kullanıyor — göndermeden önce yenileyin</span>
+              </div>
+              {gonderimHatasi&&(
+                <div style={{marginBottom:10,padding:"9px 14px",borderRadius:9,background:"#FEF3C7",border:"1px solid #FCD34D",color:"#92400E",fontSize:12.5,fontWeight:700}}>
+                  ⚠️ {gonderimHatasi}
+                </div>
+              )}
               {tableCard(rowsForTable.length,
                 ["Belge No","Müşteri","Gönderi Tipi","Depo","Tarih","Durum",""],
                 displayRows.length===0
                   ?<tr><td colSpan={7} style={{...td,textAlign:"center",color:C.muted,padding:24}}>Excel yüklendikten sonra siparişler burada listelenir</td></tr>
                   :displayRows.map((r,i)=>{
                     const bildirimUrl=r.type==="gray"?silinenBildirimUrl(r):null;
+                    const gonderildi=bildirilmisSet.has(r.no);
                     return(
                       <tr key={i}>
                         <td style={{...td,fontWeight:900}}>{r.no}</td>
@@ -350,13 +411,17 @@ export default function App(){
                         <td style={td}>{r.tarih}</td>
                         <td style={td}><Badge type={r.type} label={displayDurum(r.durum)}/></td>
                         <td style={{...td,textAlign:"center"}}>
-                          {r.type==="gray"&&(bildirimUrl?(
-                            <a href={bildirimUrl} target="_blank" rel="noopener noreferrer"
-                              style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:7,background:"#25D366",color:"#fff",fontSize:11.5,fontWeight:800,textDecoration:"none",whiteSpace:"nowrap"}}>
-                              <WhatsAppIcon size={13}/>Bildir
-                            </a>
-                          ):(
+                          {r.type==="gray"&&(!bildirimUrl?(
                             <span style={{fontSize:11,color:C.muted}}>Plasiyer yok</span>
+                          ):gonderildi?(
+                            <span style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:7,background:"#E2E8F0",color:"#94A3B8",fontSize:11.5,fontWeight:800,opacity:0.55,filter:"blur(0.3px)",cursor:"not-allowed"}}>
+                              <WhatsAppIcon size={13}/>Gönderildi ✓
+                            </span>
+                          ):(
+                            <button onClick={()=>bildirButonaBasildi(r,bildirimUrl)}
+                              style={{border:"none",display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:7,background:"#25D366",color:"#fff",fontSize:11.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                              <WhatsAppIcon size={13}/>Bildir
+                            </button>
                           ))}
                         </td>
                       </tr>
@@ -367,18 +432,23 @@ export default function App(){
                   ?<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13}}>Excel yüklendikten sonra siparişler burada listelenir</div>
                   :displayRows.map((r,i)=>{
                     const bildirimUrl=r.type==="gray"?silinenBildirimUrl(r):null;
+                    const gonderildi=bildirilmisSet.has(r.no);
                     return(
                       <MobileCard key={i} title={<>{r.musteri}<div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:2}}>{r.no}</div></>}
                         badge={<Badge type={r.type} label={displayDurum(r.durum)}/>}
                         meta={[{label:"Tip",value:r.tip},{label:"Depo",value:<Badge type={r.depo==="KARTEPE"?"yellow":"green"} label={r.depo}/>},{label:"Tarih",value:r.tarih}]}
                         extra={r.type==="gray"?(
-                          bildirimUrl?(
-                            <a href={bildirimUrl} target="_blank" rel="noopener noreferrer"
-                              style={{marginTop:9,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",borderRadius:9,background:"#25D366",color:"#fff",fontSize:12.5,fontWeight:800,textDecoration:"none"}}>
-                              <WhatsAppIcon size={14}/>Plasiyere Bildir
-                            </a>
-                          ):(
+                          !bildirimUrl?(
                             <div style={{marginTop:8,fontSize:11.5,color:C.muted,textAlign:"center"}}>Plasiyer bulunamadı</div>
+                          ):gonderildi?(
+                            <div style={{marginTop:9,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",borderRadius:9,background:"#E2E8F0",color:"#94A3B8",fontSize:12.5,fontWeight:800,opacity:0.55}}>
+                              <WhatsAppIcon size={14}/>Gönderildi ✓
+                            </div>
+                          ):(
+                            <button onClick={()=>bildirButonaBasildi(r,bildirimUrl)}
+                              style={{border:"none",width:"100%",marginTop:9,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",borderRadius:9,background:"#25D366",color:"#fff",fontSize:12.5,fontWeight:800,cursor:"pointer",fontFamily:"inherit"}}>
+                              <WhatsAppIcon size={14}/>Plasiyere Bildir
+                            </button>
                           )
                         ):undefined}/>
                     );
