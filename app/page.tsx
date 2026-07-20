@@ -1,5 +1,26 @@
 "use client";
 import React, { useState, useRef, useEffect } from "react";
+import { plasiyeriBul } from "@/lib/musteriPlasiyer";
+import { telefonBul, whatsappUrl, bildirimAlacakKisi } from "@/lib/plasiyerler";
+
+function WhatsAppIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+    </svg>
+  );
+}
+
+// Silinen sipariş için plasiyere WhatsApp bildirim linki üretir; bulunamazsa null döner
+function silinenBildirimUrl(r: { no: string; musteri: string; depo: string; tarih: string }): string | null {
+  const plasiyer = plasiyeriBul(r.musteri);
+  if (!plasiyer) return null;
+  const alici = bildirimAlacakKisi(plasiyer);
+  const tel = telefonBul(alici);
+  if (!tel) return null;
+  const msg = `⚠️ *Sipariş İptal Bildirimi*\n\n👤 Müşteri: ${r.musteri}\n📋 Belge No: ${r.no}\n🏭 Depo: ${r.depo}\n📅 Tarih: ${r.tarih}\n\nBu sipariş sistemde "Silindi" olarak görünüyor — muhtemelen stok veya başka bir nedenle iptal edildi. Müşterinizi bilgilendirmeniz rica olunur.`;
+  return whatsappUrl(tel, msg);
+}
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 const SB_URL="https://dqoreukmpkxmdputjigy.supabase.co";
@@ -72,7 +93,7 @@ function SummaryCard({type,title,val,sub,onClick,active}:{type:string;title:stri
     </div>
   );
 }
-function MobileCard({title,badge,meta}:{title:React.ReactNode;badge:React.ReactNode;meta:{label:string;value:React.ReactNode}[]}){
+function MobileCard({title,badge,meta,extra}:{title:React.ReactNode;badge:React.ReactNode;meta:{label:string;value:React.ReactNode}[];extra?:React.ReactNode}){
   return(
     <div style={{padding:"14px 16px",borderBottom:`1px solid ${C.border}`}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:9}}>
@@ -86,6 +107,7 @@ function MobileCard({title,badge,meta}:{title:React.ReactNode;badge:React.ReactN
           </div>
         ))}
       </div>
+      {extra}
     </div>
   );
 }
@@ -314,27 +336,53 @@ export default function App(){
                 <SummaryCard type="gray"   title="SİLİNENLER" val={gray} sub="Sipariş" active={durumFiltre==="gray"} onClick={()=>setDurumFiltre(f=>f==="gray"?"":"gray")}/>
               </div>
               {tableCard(rowsForTable.length,
-                ["Belge No","Müşteri","Gönderi Tipi","Depo","Tarih","Durum"],
+                ["Belge No","Müşteri","Gönderi Tipi","Depo","Tarih","Durum",""],
                 displayRows.length===0
-                  ?<tr><td colSpan={6} style={{...td,textAlign:"center",color:C.muted,padding:24}}>Excel yüklendikten sonra siparişler burada listelenir</td></tr>
-                  :displayRows.map((r,i)=>(
-                    <tr key={i}>
-                      <td style={{...td,fontWeight:900}}>{r.no}</td>
-                      <td style={td}>{r.musteri}</td>
-                      <td style={td}>{r.tip}</td>
-                      <td style={td}><Badge type={r.depo==="KARTEPE"?"yellow":"green"} label={r.depo}/></td>
-                      <td style={td}>{r.tarih}</td>
-                      <td style={td}><Badge type={r.type} label={displayDurum(r.durum)}/></td>
-                    </tr>
-                  )),
+                  ?<tr><td colSpan={7} style={{...td,textAlign:"center",color:C.muted,padding:24}}>Excel yüklendikten sonra siparişler burada listelenir</td></tr>
+                  :displayRows.map((r,i)=>{
+                    const bildirimUrl=r.type==="gray"?silinenBildirimUrl(r):null;
+                    return(
+                      <tr key={i}>
+                        <td style={{...td,fontWeight:900}}>{r.no}</td>
+                        <td style={td}>{r.musteri}</td>
+                        <td style={td}>{r.tip}</td>
+                        <td style={td}><Badge type={r.depo==="KARTEPE"?"yellow":"green"} label={r.depo}/></td>
+                        <td style={td}>{r.tarih}</td>
+                        <td style={td}><Badge type={r.type} label={displayDurum(r.durum)}/></td>
+                        <td style={{...td,textAlign:"center"}}>
+                          {r.type==="gray"&&(bildirimUrl?(
+                            <a href={bildirimUrl} target="_blank" rel="noopener noreferrer"
+                              style={{display:"inline-flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:7,background:"#25D366",color:"#fff",fontSize:11.5,fontWeight:800,textDecoration:"none",whiteSpace:"nowrap"}}>
+                              <WhatsAppIcon size={13}/>Bildir
+                            </a>
+                          ):(
+                            <span style={{fontSize:11,color:C.muted}}>Plasiyer yok</span>
+                          ))}
+                        </td>
+                      </tr>
+                    );
+                  }),
                 depot??undefined,
                 displayRows.length===0
                   ?<div style={{padding:24,textAlign:"center",color:C.muted,fontSize:13}}>Excel yüklendikten sonra siparişler burada listelenir</div>
-                  :displayRows.map((r,i)=>(
-                    <MobileCard key={i} title={<>{r.musteri}<div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:2}}>{r.no}</div></>}
-                      badge={<Badge type={r.type} label={displayDurum(r.durum)}/>}
-                      meta={[{label:"Tip",value:r.tip},{label:"Depo",value:<Badge type={r.depo==="KARTEPE"?"yellow":"green"} label={r.depo}/>},{label:"Tarih",value:r.tarih}]}/>
-                  ))
+                  :displayRows.map((r,i)=>{
+                    const bildirimUrl=r.type==="gray"?silinenBildirimUrl(r):null;
+                    return(
+                      <MobileCard key={i} title={<>{r.musteri}<div style={{fontSize:11,color:C.muted,fontWeight:700,marginTop:2}}>{r.no}</div></>}
+                        badge={<Badge type={r.type} label={displayDurum(r.durum)}/>}
+                        meta={[{label:"Tip",value:r.tip},{label:"Depo",value:<Badge type={r.depo==="KARTEPE"?"yellow":"green"} label={r.depo}/>},{label:"Tarih",value:r.tarih}]}
+                        extra={r.type==="gray"?(
+                          bildirimUrl?(
+                            <a href={bildirimUrl} target="_blank" rel="noopener noreferrer"
+                              style={{marginTop:9,display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"9px 0",borderRadius:9,background:"#25D366",color:"#fff",fontSize:12.5,fontWeight:800,textDecoration:"none"}}>
+                              <WhatsAppIcon size={14}/>Plasiyere Bildir
+                            </a>
+                          ):(
+                            <div style={{marginTop:8,fontSize:11.5,color:C.muted,textAlign:"center"}}>Plasiyer bulunamadı</div>
+                          )
+                        ):undefined}/>
+                    );
+                  })
               )}
             </div>
           );
