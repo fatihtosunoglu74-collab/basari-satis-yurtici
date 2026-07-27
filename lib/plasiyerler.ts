@@ -36,20 +36,41 @@ export const PLASIYERLER: Plasiyer[] = [
   { ad: "Eren Aykut", telefon: "905359744480" },
 ];
 
+import { sehirBul } from "./musteriPlasiyer";
+
 // Unicode combining char'ları temizler — "Engi̇n" → "Engin"
 function temizle(s: string): string {
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
-// Bazı plasiyerlerin bildirimleri başka bir kişiye yönlendirilir
+// Bazı plasiyerlerin bildirimleri her zaman başka bir kişiye yönlendirilir
 // (örn. yönetici rolündeki kişiler operasyonel WhatsApp bildirimi almak istemeyebilir)
 const YONLENDIRME: Record<string, string> = {
   "Cüneyt Baş": "Tarık Palak",
 };
 
-// Bir plasiyer adının bildirimi fiilen kime gideceğini döner (yönlendirme varsa onu, yoksa kendisini)
-export function bildirimAlacakKisi(ad: string): string {
+// Bazı plasiyerlerin bildirimleri SADECE belirli şehirdeki müşteriler için yönlendirilir
+// (örn. Recep Yılmaz'ın İstanbul müşterileri Ahmet Bahtiyar'a gitsin, diğerleri kendisine kalsın)
+const KOSULLU_YONLENDIRME: { plasiyer: string; sehir: string; hedef: string }[] = [
+  { plasiyer: "Recep Yılmaz", sehir: "İSTANBUL", hedef: "Ahmet Bahtiyar" },
+];
+
+// Bir plasiyer adının bildirimi fiilen kime gideceğini döner.
+// musteriAdi verilirse önce şehir bazlı koşullu kurallar kontrol edilir.
+export function bildirimAlacakKisi(ad: string, musteriAdi?: string): string {
   const temizAd = temizle(ad).toLowerCase();
+
+  if (musteriAdi) {
+    const kosul = KOSULLU_YONLENDIRME.find((k) => temizle(k.plasiyer).toLowerCase() === temizAd);
+    if (kosul) {
+      const sehir = sehirBul(musteriAdi);
+      if (sehir && sehir.toLocaleUpperCase("tr-TR") === kosul.sehir) {
+        return kosul.hedef;
+      }
+      return ad; // bu plasiyer için koşullu kural var ama şehir eşleşmedi — kendisi kalır
+    }
+  }
+
   const eslesen = Object.entries(YONLENDIRME).find(([k]) => temizle(k).toLowerCase() === temizAd);
   return eslesen ? eslesen[1] : ad;
 }

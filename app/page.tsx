@@ -15,7 +15,7 @@ function WhatsAppIcon({ size = 14 }: { size?: number }) {
 function silinenBildirimUrl(r: { no: string; musteri: string; depo: string; tarih: string }): string | null {
   const plasiyer = plasiyeriBul(r.musteri);
   if (!plasiyer) return null;
-  const alici = bildirimAlacakKisi(plasiyer);
+  const alici = bildirimAlacakKisi(plasiyer, r.musteri);
   const tel = telefonBul(alici);
   if (!tel) return null;
   const msg = `⚠️ *Sipariş İptal Bildirimi*\n\n👤 Müşteri: ${r.musteri}\n📋 Belge No: ${r.no}\n🏭 Depo: ${r.depo}\n📅 Tarih: ${r.tarih}\n\nBu sipariş sistemde "Silindi" olarak görünüyor — muhtemelen stok veya başka bir nedenle iptal edildi. Müşterinizi bilgilendirmeniz rica olunur.`;
