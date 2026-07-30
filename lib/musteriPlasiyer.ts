@@ -3143,29 +3143,42 @@ function normalize(s: string): string {
     .replace(/ş/g, "s").replace(/ö/g, "o").replace(/ç/g, "c");
 }
 
+// Bir arama metnine uyan tüm kayıtları (k, v) döner — genel amaçlı, iki harita için de kullanılır.
+function eslesenler(harita: Record<string, string>, aranan: string): [string, string][] {
+  const tam = Object.entries(harita).filter(([k]) => normalize(k) === aranan);
+  if (tam.length > 0) return tam;
+  return Object.entries(harita).filter(([k]) => normalize(k).includes(aranan));
+}
+
+// Eşleşen kayıtlar tek bir değere mi işaret ediyor, yoksa birden fazla FARKLI değere mi?
+// Örn. "onur otomotiv" araması 3 farklı müşteriye (3 farklı plasiyere) uyuyorsa bu "belirsiz" sayılır
+// ve hiçbiri sessizce seçilmez — yanlış plasiyere bildirim gitmesin diye.
+function tekDegereMiUyuyor(kayitlar: [string, string][]): string | null {
+  if (kayitlar.length === 0) return null;
+  const degerler = new Set(kayitlar.map(([, v]) => v));
+  return degerler.size === 1 ? kayitlar[0][1] : null;
+}
+
 export function plasiyeriBul(musteriAdi: string): string | null {
   if (!musteriAdi || musteriAdi.trim().length < 3) return null;
   const aranan = normalize(musteriAdi.trim());
-
-  const tam = Object.entries(MUSTERI_PLASIYER).find(([k]) => normalize(k) === aranan);
-  if (tam) return tam[1];
-
-  const partial = Object.entries(MUSTERI_PLASIYER).find(([k]) => normalize(k).includes(aranan));
-  if (partial) return partial[1];
-
-  return null;
+  return tekDegereMiUyuyor(eslesenler(MUSTERI_PLASIYER, aranan));
 }
 
 // Müşterinin şehrini bulur — plasiyeriBul ile aynı eşleştirme mantığını kullanır
 export function sehirBul(musteriAdi: string): string | null {
   if (!musteriAdi || musteriAdi.trim().length < 3) return null;
   const aranan = normalize(musteriAdi.trim());
+  return tekDegereMiUyuyor(eslesenler(MUSTERI_SEHIR, aranan));
+}
 
-  const tam = Object.entries(MUSTERI_SEHIR).find(([k]) => normalize(k) === aranan);
-  if (tam) return tam[1];
-
-  const partial = Object.entries(MUSTERI_SEHIR).find(([k]) => normalize(k).includes(aranan));
-  if (partial) return partial[1];
-
-  return null;
+// Arama "bulunamadı" mı yoksa "birden fazla farklı plasiyere ait eşleşme var, belirsiz" mi?
+// UI'da doğru mesajı göstermek için (plasiyeriBul/sehirBul null döndüğünde ayrım yapılabilsin).
+export function musteriDurumu(musteriAdi: string): "bulundu" | "belirsiz" | "yok" {
+  if (!musteriAdi || musteriAdi.trim().length < 3) return "yok";
+  const aranan = normalize(musteriAdi.trim());
+  const kayitlar = eslesenler(MUSTERI_PLASIYER, aranan);
+  if (kayitlar.length === 0) return "yok";
+  const degerler = new Set(kayitlar.map(([, v]) => v));
+  return degerler.size === 1 ? "bulundu" : "belirsiz";
 }
