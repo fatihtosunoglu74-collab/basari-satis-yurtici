@@ -55,7 +55,7 @@ async function sbBildirKaydet(belgeNo:string):Promise<boolean>{
 
 // ─── Yardımcılar ──────────────────────────────────────────────────────────────
 const sv=(v:any)=>String(v??"").trim();
-const todayStr=()=>new Date().toISOString().split("T")[0];
+const todayStr=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
 function xd(v:any):string{
   if(v instanceof Date)return v.toLocaleDateString("tr-TR");
   if(typeof v==="number"&&v>1){const d=new Date(Math.round((v-25569)*86400*1000));return d.toLocaleDateString("tr-TR");}
